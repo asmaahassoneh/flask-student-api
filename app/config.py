@@ -1,14 +1,13 @@
 import os
-from pathlib import Path
+from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv()
 
 
 class Config:
-    SECRET_KEY = "dev-secret-key"
-    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'students.db')}"
+    SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret")
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    TESTING = False
 
 
 class TestConfig(Config):
