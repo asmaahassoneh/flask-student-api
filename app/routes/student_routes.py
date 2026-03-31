@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request
+from flask_login import login_required
 from sqlalchemy.exc import IntegrityError
 
+from app.extensions import db
 from app.models.student import Student
 from app.services.student_service import (
     create_student,
@@ -19,6 +21,7 @@ student_bp = Blueprint("student_bp", __name__, url_prefix="/api/students")
 
 
 @student_bp.route("", methods=["GET"])
+@login_required
 def list_students():
     students = get_all_students()
     return (
@@ -34,6 +37,7 @@ def list_students():
 
 
 @student_bp.route("/<student_id>", methods=["GET"])
+@login_required
 def get_student(student_id):
     student = get_student_by_student_id(student_id)
 
@@ -60,6 +64,7 @@ def get_student(student_id):
 
 
 @student_bp.route("", methods=["POST"])
+@login_required
 def add_student():
     data = request.get_json(silent=True)
 
@@ -78,7 +83,7 @@ def add_student():
                     "error": "Student ID already exists.",
                 }
             ),
-            400,
+            409,
         )
 
     existing_email = Student.query.filter_by(
@@ -92,7 +97,7 @@ def add_student():
                     "error": "Email already exists.",
                 }
             ),
-            400,
+            409,
         )
 
     try:
@@ -108,6 +113,7 @@ def add_student():
             201,
         )
     except IntegrityError:
+        db.session.rollback()
         return (
             jsonify(
                 {
@@ -120,6 +126,7 @@ def add_student():
 
 
 @student_bp.route("/<student_id>", methods=["PUT"])
+@login_required
 def edit_student(student_id):
     student = get_student_by_student_id(student_id)
 
@@ -151,7 +158,7 @@ def edit_student(student_id):
                         "error": "Student ID already exists.",
                     }
                 ),
-                400,
+                409,
             )
 
     if "email" in data:
@@ -165,7 +172,7 @@ def edit_student(student_id):
                         "error": "Email already exists.",
                     }
                 ),
-                400,
+                409,
             )
 
     try:
@@ -181,6 +188,7 @@ def edit_student(student_id):
             200,
         )
     except IntegrityError:
+        db.session.rollback()
         return (
             jsonify(
                 {
@@ -193,6 +201,7 @@ def edit_student(student_id):
 
 
 @student_bp.route("/<student_id>", methods=["DELETE"])
+@login_required
 def remove_student(student_id):
     student = get_student_by_student_id(student_id)
 
@@ -208,12 +217,4 @@ def remove_student(student_id):
         )
 
     delete_student(student)
-    return (
-        jsonify(
-            {
-                "success": True,
-                "message": "Student deleted successfully.",
-            }
-        ),
-        200,
-    )
+    return "", 204

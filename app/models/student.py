@@ -6,8 +6,8 @@ class Student(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    student_id = db.Column(db.String(20), nullable=False, unique=True)
-    email = db.Column(db.String(120), nullable=False, unique=True)
+    student_id = db.Column(db.String(20), nullable=False, unique=True, index=True)
+    email = db.Column(db.String(120), nullable=False, unique=True, index=True)
     age = db.Column(db.Integer, nullable=False)
     major = db.Column(db.String(100), nullable=False)
 

@@ -1,12 +1,32 @@
 from app.extensions import db
 from app.models.student import Student
+from app.models.user import User
+
+
+def login_test_user(client, app):
+    with app.app_context():
+        existing_user = User.query.filter_by(email="asmaa@example.com").first()
+        if existing_user is None:
+            user = User(username="asmaa", email="asmaa@example.com")
+            user.set_password("123456")
+            db.session.add(user)
+            db.session.commit()
+
+    client.post(
+        "/login",
+        data={
+            "email": "asmaa@example.com",
+            "password": "123456",
+        },
+        follow_redirects=True,
+    )
 
 
 def create_sample_student():
     return Student(
         name="Asmaa Hassoneh",
         student_id="12112458",
-        email="asmaa@example.com",
+        email="student1@example.com",
         age=22,
         major="Computer Engineering",
     )
@@ -22,7 +42,18 @@ def create_second_student():
     )
 
 
-def test_get_all_students_empty(client):
+def test_students_api_requires_login(client):
+    response = client.get("/api/students")
+
+    assert response.status_code == 401
+    data = response.get_json()
+    assert data["success"] is False
+    assert data["error"] == "Authentication required."
+
+
+def test_get_all_students_empty(client, app):
+    login_test_user(client, app)
+
     response = client.get("/api/students")
 
     assert response.status_code == 200
@@ -33,6 +64,8 @@ def test_get_all_students_empty(client):
 
 
 def test_get_all_students_with_data(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student1 = create_sample_student()
         student2 = create_second_student()
@@ -48,7 +81,9 @@ def test_get_all_students_with_data(client, app):
     assert len(data["data"]) == 2
 
 
-def test_create_student_success(client):
+def test_create_student_success(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Asmaa Hassoneh",
         "student_id": "12112458",
@@ -68,7 +103,9 @@ def test_create_student_success(client):
     assert data["data"]["email"] == "asmaa@example.com"
 
 
-def test_create_student_missing_fields(client):
+def test_create_student_missing_fields(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Asmaa Hassoneh",
         "student_id": "12112458",
@@ -82,7 +119,9 @@ def test_create_student_missing_fields(client):
     assert "Missing required fields" in data["error"]
 
 
-def test_create_student_empty_name(client):
+def test_create_student_empty_name(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "   ",
         "student_id": "12112458",
@@ -98,7 +137,9 @@ def test_create_student_empty_name(client):
     assert data["error"] == "Name is required."
 
 
-def test_create_student_invalid_student_id_format(client):
+def test_create_student_invalid_student_id_format(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Asmaa Hassoneh",
         "student_id": "12-112458",
@@ -114,7 +155,9 @@ def test_create_student_invalid_student_id_format(client):
     assert data["error"] == "Student ID must contain only letters and numbers."
 
 
-def test_create_student_invalid_email(client):
+def test_create_student_invalid_email(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Asmaa Hassoneh",
         "student_id": "12112458",
@@ -131,6 +174,8 @@ def test_create_student_invalid_email(client):
 
 
 def test_create_student_duplicate_email(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -139,19 +184,21 @@ def test_create_student_duplicate_email(client, app):
     payload = {
         "name": "Another Student",
         "student_id": "99999999",
-        "email": "asmaa@example.com",
+        "email": "student1@example.com",
         "age": 23,
         "major": "Medicine",
     }
 
     response = client.post("/api/students", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     data = response.get_json()
     assert data["error"] == "Email already exists."
 
 
-def test_create_student_invalid_age_type(client):
+def test_create_student_invalid_age_type(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Asmaa Hassoneh",
         "student_id": "12112458",
@@ -167,7 +214,9 @@ def test_create_student_invalid_age_type(client):
     assert data["error"] == "Age must be an integer."
 
 
-def test_create_student_age_too_small(client):
+def test_create_student_age_too_small(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Young Student",
         "student_id": "12112000",
@@ -183,7 +232,9 @@ def test_create_student_age_too_small(client):
     assert data["error"] == "Age must be between 15 and 100."
 
 
-def test_create_student_age_too_large(client):
+def test_create_student_age_too_large(client, app):
+    login_test_user(client, app)
+
     payload = {
         "name": "Old Student",
         "student_id": "12112001",
@@ -200,6 +251,8 @@ def test_create_student_age_too_large(client):
 
 
 def test_create_student_duplicate_student_id(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -215,12 +268,14 @@ def test_create_student_duplicate_student_id(client, app):
 
     response = client.post("/api/students", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     data = response.get_json()
     assert data["error"] == "Student ID already exists."
 
 
 def test_get_student_success(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -235,11 +290,13 @@ def test_get_student_success(client, app):
 
 
 def test_get_student_case_insensitive_id(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = Student(
             name="Asmaa Hassoneh",
             student_id="AB123",
-            email="asmaa@example.com",
+            email="ab123@example.com",
             age=22,
             major="Computer Engineering",
         )
@@ -254,7 +311,9 @@ def test_get_student_case_insensitive_id(client, app):
     assert data["data"]["student_id"] == "AB123"
 
 
-def test_get_student_not_found(client):
+def test_get_student_not_found(client, app):
+    login_test_user(client, app)
+
     response = client.get("/api/students/99999999")
 
     assert response.status_code == 404
@@ -263,6 +322,8 @@ def test_get_student_not_found(client):
 
 
 def test_update_student_success(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -283,6 +344,8 @@ def test_update_student_success(client, app):
 
 
 def test_update_student_email_success(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -300,6 +363,8 @@ def test_update_student_email_success(client, app):
 
 
 def test_update_student_duplicate_email(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student1 = create_sample_student()
         student2 = create_second_student()
@@ -312,12 +377,14 @@ def test_update_student_duplicate_email(client, app):
 
     response = client.put("/api/students/12112458", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     data = response.get_json()
     assert data["error"] == "Email already exists."
 
 
 def test_update_student_duplicate_student_id(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student1 = create_sample_student()
         student2 = create_second_student()
@@ -330,12 +397,14 @@ def test_update_student_duplicate_student_id(client, app):
 
     response = client.put("/api/students/12112458", json=payload)
 
-    assert response.status_code == 400
+    assert response.status_code == 409
     data = response.get_json()
     assert data["error"] == "Student ID already exists."
 
 
 def test_update_student_invalid_email(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -353,6 +422,8 @@ def test_update_student_invalid_email(client, app):
 
 
 def test_update_student_invalid_age(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -370,6 +441,8 @@ def test_update_student_invalid_age(client, app):
 
 
 def test_update_student_empty_json_is_allowed(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -383,7 +456,9 @@ def test_update_student_empty_json_is_allowed(client, app):
     assert data["data"]["name"] == "Asmaa Hassoneh"
 
 
-def test_update_student_not_found(client):
+def test_update_student_not_found(client, app):
+    login_test_user(client, app)
+
     payload = {"name": "Updated Name"}
 
     response = client.put("/api/students/00000000", json=payload)
@@ -394,6 +469,8 @@ def test_update_student_not_found(client):
 
 
 def test_delete_student_success(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -401,17 +478,17 @@ def test_delete_student_success(client, app):
 
     response = client.delete("/api/students/12112458")
 
-    assert response.status_code == 200
-    data = response.get_json()
-    assert data["success"] is True
-    assert data["message"] == "Student deleted successfully."
+    assert response.status_code == 204
+    assert response.data == b""
 
     with app.app_context():
         student = Student.query.filter_by(student_id="12112458").first()
         assert student is None
 
 
-def test_delete_student_not_found(client):
+def test_delete_student_not_found(client, app):
+    login_test_user(client, app)
+
     response = client.delete("/api/students/00000000")
 
     assert response.status_code == 404
@@ -419,7 +496,9 @@ def test_delete_student_not_found(client):
     assert data["error"] == "Student not found."
 
 
-def test_invalid_json_body(client):
+def test_invalid_json_body(client, app):
+    login_test_user(client, app)
+
     response = client.post(
         "/api/students",
         data="not-json",
@@ -432,6 +511,8 @@ def test_invalid_json_body(client):
 
 
 def test_invalid_json_body_on_put(client, app):
+    login_test_user(client, app)
+
     with app.app_context():
         student = create_sample_student()
         db.session.add(student)
@@ -456,7 +537,9 @@ def test_unknown_route_returns_404(client):
     assert data["error"] == "Resource not found."
 
 
-def test_method_not_allowed(client):
+def test_method_not_allowed(client, app):
+    login_test_user(client, app)
+
     response = client.patch("/api/students")
 
     assert response.status_code == 405
@@ -464,7 +547,9 @@ def test_method_not_allowed(client):
     assert data["error"] == "Method not allowed."
 
 
-def test_internal_server_error_handler(client, monkeypatch):
+def test_internal_server_error_handler(client, app, monkeypatch):
+    login_test_user(client, app)
+
     def broken_query():
         raise Exception("Unexpected failure")
 

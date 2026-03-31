@@ -27,6 +27,19 @@ def is_valid_email(email):
     return re.match(pattern, email) is not None
 
 
+def is_strong_password(password):
+    if not isinstance(password, str):
+        return False
+
+    if len(password) < 8:
+        return False
+
+    has_letter = any(char.isalpha() for char in password)
+    has_digit = any(char.isdigit() for char in password)
+
+    return has_letter and has_digit
+
+
 def validate_student_payload(data, partial=False):
     if not isinstance(data, dict):
         return "Request body must be valid JSON."
@@ -66,5 +79,39 @@ def validate_student_payload(data, partial=False):
         major = normalize_text(data.get("major"))
         if not major:
             return "Major is required."
+
+    return None
+
+
+def validate_register_form(username, email, password, confirm_password):
+    username = normalize_text(username)
+    email = normalize_email(email)
+
+    if not username or not email or not password or not confirm_password:
+        return "All fields are required."
+
+    if not is_valid_email(email):
+        return "Email is not valid."
+
+    if password != confirm_password:
+        return "Passwords do not match."
+
+    if not is_strong_password(password):
+        return (
+            "Password must be at least 8 characters long and include "
+            "both letters and numbers."
+        )
+
+    return None
+
+
+def validate_login_form(email, password):
+    email = normalize_email(email)
+
+    if not email or not password:
+        return "Email and password are required."
+
+    if not is_valid_email(email):
+        return "Email is not valid."
 
     return None

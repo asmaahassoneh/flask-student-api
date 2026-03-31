@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Flask Student Portal{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="logo">🎓 Student Portal</div>
+
+        <div class="links">
+          <a href="{{ url_for('main_bp.home') }}">Home</a>
+
+          {% if current_user.is_authenticated %}
+          <a href="{{ url_for('student_bp.list_students') }}">Students API</a>
+          <a href="{{ url_for('auth_bp.dashboard') }}">Dashboard</a>
+
+          <form
+            action="{{ url_for('auth_bp.logout') }}"
+            method="POST"
+            style="display: inline"
+          >
+            <button type="submit" class="danger-btn btnDelete">Logout</button>
+          </form>
+          {% else %}
+          <a href="{{ url_for('auth_bp.login') }}">Login</a>
+          <a href="{{ url_for('auth_bp.register') }}">Register</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+
+    <div class="app-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html>
